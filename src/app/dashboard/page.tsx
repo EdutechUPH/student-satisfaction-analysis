@@ -18,6 +18,9 @@ type SurveyResponse = { comment_text: string; sentiment: string; human_selected_
 type SentimentData = { name: string; value: number };
 type SentimentByCategoryData = { name: string; Positive: number; Negative: number; Neutral: number; };
 type KeywordData = { name: string; count: number };
+// --- FIX: Added specific types for Recharts click events ---
+type PieClickPayload = { name: string; };
+type BarClickPayload = { activePayload?: { payload: { name: string } }[] };
 
 export default function DashboardPage() {
     // --- State for filter options ---
@@ -46,7 +49,7 @@ export default function DashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [netSentimentScore, setNetSentimentScore] = useState(0);
     const [keywordData, setKeywordData] = useState<KeywordData[]>([]);
-    const [sentimentBySubcategoryData, setSentimentBySubcategoryData] = useState<any[]>([]);
+    const [sentimentBySubcategoryData, setSentimentBySubcategoryData] = useState<SentimentByCategoryData[]>([]);
 
     // --- Fetch all data just once on initial load ---
     useEffect(() => {
@@ -125,13 +128,15 @@ export default function DashboardPage() {
                     if (!acc[cat]) {
                         acc[cat] = { name: cat, Positive: 0, Negative: 0, Neutral: 0, total: 0 };
                     }
-                    acc[cat][sentiment]++;
+                    // FIX: Ensure sentiment is a valid key
+                    const validSentiment = sentiment as 'Positive' | 'Negative' | 'Neutral';
+                    acc[cat][validSentiment]++;
                     acc[cat].total++;
                 });
             }
             return acc;
-        }, {} as any);
-        const sortedSentimentBySubcategory = Object.values(subCatSentiments).sort((a: any, b: any) => b.total - a.total);
+        }, {} as Record<string, { name: string; Positive: number; Negative: number; Neutral: number; total: number; }>);
+        const sortedSentimentBySubcategory = Object.values(subCatSentiments).sort((a, b) => b.total - a.total);
         setSentimentBySubcategoryData(sortedSentimentBySubcategory);
 
         const subCatToParentMap = new Map(subCategories.map(sc => [sc.name, sc.parent_category_id]));
@@ -185,8 +190,9 @@ export default function DashboardPage() {
     const PIE_COLORS = { 'Positive': '#10B981', 'Negative': '#EF4444', 'Neutral': '#6B7280' };
     const BAR_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-    const handlePieClick = (data: any) => setSelectedSentiment(data.name);
-    const handleBarClick = (data: any) => {
+    // --- FIX: Added specific types to event handlers ---
+    const handlePieClick = (data: PieClickPayload) => setSelectedSentiment(data.name);
+    const handleBarClick = (data: BarClickPayload) => {
         if(data && data.activePayload && data.activePayload[0]) {
             setSelectedSubCategory(data.activePayload[0].payload.name);
             setSelectedParentCategory('all');
@@ -305,7 +311,6 @@ export default function DashboardPage() {
                          ) : <p className="text-center text-gray-500 py-10">No data</p>}
                     </CardContent>
                 </Card>
-                {/* --- UI CHANGE: The chart below is now horizontal --- */}
                 <Card>
                     <CardHeader><CardTitle>Sentiment by Parent Category</CardTitle></CardHeader>
                     <CardContent>
@@ -336,7 +341,8 @@ export default function DashboardPage() {
                     {isLoading ? <p>Loading comments...</p> : filteredComments.length > 0 ? (
                         filteredComments.map((comment, index) => (
                             <div key={index} className="border-b pb-4 last:border-b-0">
-                                <p className="text-gray-800 italic">"{comment.comment_text}"</p>
+                                {/* FIX: Replaced " with a template literal for safety */}
+                                <p className="text-gray-800 italic">{`"${comment.comment_text}"`}</p>
                                 <div className="flex items-center gap-4 mt-2">
                                     <span className={`text-xs font-semibold px-2 py-1 rounded-full ${ comment.sentiment === 'Positive' ? 'bg-green-100 text-green-800' : comment.sentiment === 'Negative' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800' }`}>{comment.sentiment}</span>
                                     {comment.is_suggestion && ( <span className="text-xs font-semibold bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">Suggestion</span> )}
