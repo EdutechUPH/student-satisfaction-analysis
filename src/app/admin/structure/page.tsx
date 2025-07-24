@@ -2,9 +2,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
-// --- FIX: Cast the import to the correct type to resolve the overload error ---
-import Papa from 'papaparse';
-const PapaParse = Papa as any;
+import Papa, { ParseResult } from 'papaparse';
 
 // --- Type Definitions ---
 type Institution = {
@@ -107,81 +105,76 @@ export default function StructurePage() {
     }
     setIsImporting(true);
 
-    const reader = new FileReader();
+    Papa.parse(csvFile, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async (results: ParseResult<CsvRow>) => {
+            const rows = results.data;
+            let newItemsCount = 0;
+            
+            const localInstitutions = [...institutions];
+            const localFaculties = [...faculties];
+            const localStudyPrograms = [...studyPrograms];
 
-    reader.onload = async (event) => {
-        const csvText = event.target?.result as string;
-        
-        // --- FIX: Use the casted PapaParse constant ---
-        PapaParse.parse(csvText, {
-            header: true,
-            skipEmptyLines: true,
-            complete: async (results: { data: CsvRow[] }) => {
-                const rows = results.data;
-                let newItemsCount = 0;
-                
-                const localInstitutions = [...institutions];
-                const localFaculties = [...faculties];
-                const localStudyPrograms = [...studyPrograms];
+            for (const row of rows) {
+                try {
+                    const instName = row.Institusi?.trim();
+                    if (!instName) continue;
 
-                for (const row of rows) {
-                    try {
-                        const instName = row.Institusi?.trim();
-                        if (!instName) continue;
-
-                        let institution = localInstitutions.find(i => i.name === instName);
-                        if (!institution) {
-                            const { data, error } = await supabase.from('institutions').insert({ name: instName }).select().single();
-                            if (error) throw error;
-                            institution = data;
-                            localInstitutions.push(institution);
-                        }
-
-                        const facName = row.Fakultas?.trim();
-                        if (!facName) continue;
-
-                        let faculty = localFaculties.find(f => f.name === facName && f.institution_id === institution.id);
-                        if (!faculty) {
-                            const { data, error } = await supabase.from('faculties').insert({ name: facName, institution_id: institution.id }).select('*, institutions(name)').single();
-                            if (error) throw error;
-                            faculty = data as Faculty;
-                            localFaculties.push(faculty);
-                        }
-
-                        const progName = row.Prodi?.trim();
-                        if (!progName) continue;
-
-                        const program = localStudyPrograms.find(p => p.name === progName && p.faculty_id === faculty.id);
-                        if (!program) {
-                            const { data, error } = await supabase.from('study_programs').insert({ name: progName, faculty_id: faculty.id }).select().single();
-                            if (error) throw error;
-                            localStudyPrograms.push(data as StudyProgram);
-                            newItemsCount++;
-                        }
-                    } catch (error) {
-                        let errorMessage = "An unknown error occurred.";
-                        if (error instanceof Error) {
-                            errorMessage = error.message;
-                        }
-                        alert(`An error occurred during import: ${errorMessage}`);
-                        setIsImporting(false);
-                        return;
+                    let institution = localInstitutions.find(i => i.name === instName);
+                    if (!institution) {
+                        const { data, error } = await supabase.from('institutions').insert({ name: instName }).select().single();
+                        if (error) throw error;
+                        // --- FIX: Ensure data is not null before proceeding ---
+                        if (!data) throw new Error(`Failed to create or retrieve institution: ${instName}`);
+                        
+                        institution = data;
+                        localInstitutions.push(institution);
                     }
-                }
-                
-                setIsImporting(false);
-                alert(`Import complete! ${newItemsCount} new item(s) were processed.`);
-                fetchData();
-            },
-            error: (error: Error) => {
-                console.error("Error parsing CSV:", error);
-                alert("An error occurred while parsing the CSV file.");
-                setIsImporting(false);
-            },
-        });
-    };
 
-    reader.readAsText(csvFile);
+                    const facName = row.Fakultas?.trim();
+                    if (!facName) continue;
+
+                    let faculty = localFaculties.find(f => f.name === facName && f.institution_id === institution.id);
+                    if (!faculty) {
+                        const { data, error } = await supabase.from('faculties').insert({ name: facName, institution_id: institution.id }).select('*, institutions(name)').single();
+                        if (error) throw error;
+                        // --- FIX: Ensure data is not null before proceeding ---
+                        if (!data) throw new Error(`Failed to create or retrieve faculty: ${facName}`);
+                        
+                        faculty = data as Faculty;
+                        localFaculties.push(faculty);
+                    }
+
+                    const progName = row.Prodi?.trim();
+                    if (!progName) continue;
+
+                    const program = localStudyPrograms.find(p => p.name === progName && p.faculty_id === faculty.id);
+                    if (!program) {
+                        const { data, error } = await supabase.from('study_programs').insert({ name: progName, faculty_id: faculty.id }).select().single();
+                        if (error) throw error;
+                        // --- FIX: Ensure data is not null before proceeding ---
+                        if (!data) throw new Error(`Failed to create or retrieve program: ${progName}`);
+
+                        localStudyPrograms.push(data as StudyProgram);
+                        newItemsCount++;
+                    }
+                } catch (error) {
+                    let errorMessage = "An unknown error occurred.";
+                    if (error instanceof Error) {
+                        errorMessage = error.message;
+                    }
+                    alert(`An error occurred during import: ${errorMessage}`);
+                    setIsImporting(false);
+                    return;
+                }
+            }
+            
+            setIsImporting(false);
+            alert(`Import complete! ${newItemsCount} new item(s) were processed.`);
+            fetchData();
+        },
+    });
   };
 
   return (
