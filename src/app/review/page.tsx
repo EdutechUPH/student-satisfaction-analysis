@@ -96,7 +96,7 @@ export default function ReviewPage() {
             if (error) {
                 console.error("Error fetching responses:", error);
             } else {
-                setResponses((data as SurveyResponse[]) || []);
+                setResponses((data as unknown as SurveyResponse[]) || []); // FIX
                 setTotalCount(count || 0);
             }
             setIsLoading(false);
