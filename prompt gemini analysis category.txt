@@ -1,0 +1,122 @@
+You are an AI assistant specializing in data processing and analysis. Your task is to process a list of raw student survey data based on a "ground truth" list of university structures and a defined set of categories.
+
+Here is the information you will use:
+
+**1. The "Ground Truth" University Structure:**
+Institusi,Fakultas,Prodi
+UPHLV,"Fakultas Ekonomi dan Bisnis (UPHLV)","S1-Akuntansi"
+UPHLV,"Fakultas Ekonomi dan Bisnis (UPHLV)","S1-Manajemen"
+UPHLV,"Fakultas Ekonomi dan Bisnis (UPHLV)","S2-Manajemen"
+UPHLV,"Fakultas Ekonomi dan Bisnis (UPHLV)","S3-Manajemen"
+UPHMN,"Fakultas Ekonomi dan Bisnis Medan (UPHMN)","S1-Akuntansi"
+UPHMN,"Fakultas Ekonomi dan Bisnis Medan (UPHMN)","S1-Manajemen"
+UPHSB,"Fakultas Ekonomi dan Bisnis Surabaya (UPHSB)","S1-Akuntansi"
+UPHSB,"Fakultas Ekonomi dan Bisnis Surabaya (UPHSB)","S1-Manajemen"
+UPHSB,"Fakultas Ekonomi dan Bisnis Surabaya (UPHSB)","S2-Manajemen"
+UPHLV,"Fakultas Sains dan Teknologi (UPHLV)","S1-Matematika"
+UPHLV,"Fakultas Sains dan Teknologi (UPHLV)","S1-Teknik Elektro"
+UPHLV,"Fakultas Sains dan Teknologi (UPHLV)","S1-Teknik Industri"
+UPHLV,"Fakultas Sains dan Teknologi (UPHLV)","S1-Teknik sipil"
+UPHLV,"Fakultas Sains dan Teknologi (UPHLV)","S1-Teknologi Pangan"
+UPHLV,"Fakultas Teknologi Informasi (UPHLV)","S1-Sistem Informasi"
+UPHLV,"Fakultas Teknologi Informasi (UPHLV)","S1-Teknik Informatika"
+UPHLV,"Fakultas Teknologi Informasi (UPHLV)","S2-Informatika"
+UPHMN,"Fakultas Teknologi Informasi Medan (UPHMN)","S1-Sistem Informasi"
+UPHMN,"Fakultas Teknologi Informasi Medan (UPHMN)","S1-Informatika"
+UPHLV,"Fakultas Hospitality dan Pariwisata (UPHLV)","D4-Usaha Perjalanan Wisata"
+UPHLV,"Fakultas Hospitality dan Pariwisata (UPHLV)","D4-Pengelolaan Perhotelan"
+UPHLV,"Fakultas Hospitality dan Pariwisata (UPHLV)","S1-Pariwisata"
+UPHLV,"Fakultas Hospitality dan Pariwisata (UPHLV)","S2-Pariwisata"
+UPHLV,"Fakultas Pascasarjana Pendidikan (UPHLV)","S2-Teknologi Pendidikan"
+UPHLV,"Fakultas Desain (UPHLV)","S1-Arsitektur"
+UPHLV,"Fakultas Desain (UPHLV)","S1-Desain Interior"
+UPHLV,"Fakultas Desain (UPHLV)","S1-Desain Komunikasi Visual"
+UPHLV,"Fakultas Desain (UPHLV)","S1-Desain Produk"
+UPHLV,"Fakultas Musik (UPHLV)","S1-Musik"
+UPHLV,"Fakultas Hukum (UPHLV)","S1-Ilmu Hukum"
+UPHLV,"Fakultas Hukum (UPHLV)","S2-Ilmu Hukum"
+UPHLV,"Fakultas Hukum (UPHLV)","S2-Kenotariatan"
+UPHLV,"Fakultas Hukum (UPHLV)","S3-Ilmu Hukum"
+UPHMN,"Fakultas Hukum Medan (UPHMN)","S1-Hukum"
+UPHSB,"Fakultas Hukum Surabaya (UPHSB)","S1-Hukum"
+UPHSB,"Fakultas Hukum Surabaya (UPHSB)","S2-Hukum"
+UPHLV,"Fakultas Ilmu Sosial dan Ilmu Politik (UPHLV)","S1-Ilmu Hubungan Internasional"
+UPHLV,"Fakultas Ilmu Sosial dan Ilmu Politik (UPHLV)","S1-Ilmu Komunikasi"
+UPHLV,"Fakultas Ilmu Sosial dan Ilmu Politik (UPHLV)","S1-PJJ Ilmu Komunikasi"
+UPHLV,"Fakultas Ilmu Sosial dan Ilmu Politik (UPHLV)","S2-Hubungan Internasional"
+UPHLV,"Fakultas Ilmu Sosial dan Ilmu Politik (UPHLV)","S2-Ilmu Komunikasi"
+UPHLV,"Fakultas Kedokteran (UPHLV)","S1-Kedokteran"
+UPHLV,"Fakultas Kedokteran (UPHLV)","Pendidikan Profesi Dokter"
+UPHLV,"Fakultas Kedokteran (UPHLV)","S2-Manajemen Rumah Sakit"
+UPHLV,"Fakultas Kedokteran (UPHLV)","Sp1-Radiologi"
+UPHLV,"Fakultas Kedokteran (UPHLV)","Sp1-Kedokteran Keluarga Layanan Primer"
+UPHLV,"Fakultas Ilmu Kesehatan (UPHLV)","D3-Farmasi"
+UPHLV,"Fakultas Ilmu Kesehatan (UPHLV)","D4-Teknologi Laboratorium Medis"
+UPHLV,"Fakultas Ilmu Kesehatan (UPHLV)","S1-Farmasi"
+UPHLV,"Fakultas Ilmu Kesehatan (UPHLV)","S1-Biologi"
+UPHLV,"Fakultas Psikologi (UPHLV)","S1-Psikologi"
+UPHLV,"Fakultas Keperawatan (UPHLV)","S1-Keperawatan"
+UPHLV,"Fakultas Keperawatan (UPHLV)","Pendidikan Profesi Ners"
+UPHLV,"Fakultas Keperawatan (UPHLV)","S2-Keperawatan"
+UPHLV,"Fakultas Ilmu Pendidikan (UPHLV)","S1-Pendidikan Bahasa Inggris"
+UPHLV,"Fakultas Ilmu Pendidikan (UPHLV)","S1-Pendidikan Biologi"
+UPHLV,"Fakultas Ilmu Pendidikan (UPHLV)","S1-Pendidikan Ekonomi"
+UPHLV,"Fakultas Ilmu Pendidikan (UPHLV)","S1-Pendidikan Guru Sekolah Dasar"
+UPHLV,"Fakultas Ilmu Pendidikan (UPHLV)","S1-Pendidikan Matematika"
+UPHLV,"Fakultas Ilmu Pendidikan (UPHLV)","S1-Pendidikan Agama Kristen"
+UPHLV,"Fakultas Ilmu Pendidikan (UPHLV)","S1-Pendidikan Fisika"
+UPHLV,"Fakultas Ilmu Pendidikan (UPHLV)","S1-Pendidikan Kimia"
+UPHLV,"Fakultas Ilmu Pendidikan (UPHLV)","S1-Pendidikan Bahasa Indonesia"
+UPHLV,"Fakultas Ilmu Pendidikan (UPHLV)","S1-Pendidikan Ilmu Pengetahuan Sosial"
+UPHLV,"Fakultas Ilmu Pendidikan (UPHLV)","Pendidikan Profesi Guru"
+
+
+**2. The Categories List:**
+- Assignments and Assessments
+- Classroom Learning
+- Eduhub
+- M-Flex
+- Moodle
+- Panopto
+- Scheduling
+- Teams
+- Others
+
+
+**3. The Raw Survey Data:**
+(Paste the raw survey data for the batch you are processing here)
+
+---
+
+**Your Task:**
+
+For each row in the "Raw Survey Data", you must perform two main actions: Data Standardization and AI Analysis.
+
+**IMPORTANT PRE-PROCESSING STEP:** Before you begin, examine the `Learning Experience_comment` for each row. If a comment contains multiple distinct points (often separated by hyphens or new lines), **split that single row into multiple rows.** For example, if raw survey row #7 has 5 points, create new rows numbered `007a`, `007b`, `007c`, `007d`, and `007e`. Each new row should contain only the relevant part of the comment and be analyzed independently.
+
+---
+**Task A: Data Standardization**
+
+For every row in your final output:
+1.  **Correct Names:** The `Institusi`, `Fakultas`, and `Prodi` columns must **EXACTLY MATCH** a valid combination from the "Ground Truth" list. Correct all typos and variations. Trim any leading/trailing whitespace from these names. **Note:** The faculty names in the Ground Truth are now more specific (e.g., `Fakultas Ekonomi dan Bisnis Medan (UPHMN)`). Use the `Institusi` column from the raw data to select the correct, full faculty name.
+2.  **Format Row Number:** The `No` column must be formatted with **leading zeros to be 3 digits long**. For example, `7` becomes `007`, `10` becomes `010`, `123` stays `123`. If you split a row, add a letter: `007a`, `007b`, etc.
+
+---
+**Task B: AI Analysis**
+
+For each row with a non-empty `Learning Experience_comment`:
+1.  **sentiment**: Determine the sentiment as one of three values: 'Positive', 'Negative', or 'Neutral'.
+2.  **ai_categories**: Assign one or more categories from the provided "Categories List". The output for this column **must be a valid JSON array formatted as a string**. For example: `"[ ""Moodle"", ""Scheduling"" ]"`. If no specific category applies, use an empty array `"[ ]"`.
+3.  **ai_reasoning**: Write a brief, one-sentence explanation for your sentiment and category choices.
+4.  **is_suggestion**: Determine if the comment is primarily a suggestion for improvement. Output **`TRUE`** if it is a suggestion, and **`FALSE`** if it is primarily a statement of fact, complaint, or praise.
+
+---
+**Final Output Format:**
+
+Your final output must be a single block of text in CSV format.
+- The header must be exactly: `No,Institusi,Fakultas,Prodi,"Learning Experience_comment",sentiment,ai_categories,ai_reasoning,is_suggestion`
+- Ensure every field containing commas or new lines (especially the comment) is enclosed in double quotes (`"`).
+- **Crucially, ensure every single row has the correct number of fields (9 fields, meaning 8 commas).** For rows with no comment, the last 5 columns should be empty, but the commas must still be there (e.g., `001,UPHLV,"Fakultas A","Prodi B",,,,,`).
+- Process ALL rows provided in the raw data.
+
+Please begin.
