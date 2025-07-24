@@ -136,9 +136,9 @@ export default function StructurePage() {
                     const facName = row.Fakultas?.trim();
                     if (!facName) continue;
 
-                    let faculty = localFaculties.find(f => f.name === facName && f.institution_id === institution.id);
+                    let faculty = localFaculties.find(f => f.name === facName && f.institution_id === institution!.id); // FIX
                     if (!faculty) {
-                        const { data: newFaculty, error } = await supabase.from('faculties').insert({ name: facName, institution_id: institution.id }).select('*, institutions(name)').single();
+                        const { data: newFaculty, error } = await supabase.from('faculties').insert({ name: facName, institution_id: institution!.id }).select('*, institutions(name)').single(); // FIX
                         if (error) throw error;
                         if (!newFaculty) throw new Error(`Failed to create or retrieve faculty: ${facName}`);
                         
