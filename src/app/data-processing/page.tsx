@@ -353,7 +353,7 @@ export default function DataProcessingPage() {
                                                 {/* FIX: Replaced literal quotes with HTML entities */}
                                                 <p className="whitespace-pre-wrap max-w-md italic text-gray-700">&quot;{row['Learning Experience_comment']}&quot;</p>
                                                 <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
-                                                    <span className="font-semibold">AI Reasoning:</span> {row.ai_reasoning}
+                                                    <span className="font-semibold">AI Reasoning:</span> {String(row.ai_reasoning ?? '')} {/* FIX */}
                                                 </p>
                                             </td>
                                             <td className="px-4 py-4 align-top">
