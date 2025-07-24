@@ -2,7 +2,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
-import Papa, { ParseError } from 'papaparse'; // FIX: Import ParseError type
+import Papa, { ParseError, ParseResult } from 'papaparse'; // Import ParseResult
 
 // --- Type Definitions ---
 type Institution = {
@@ -28,7 +28,6 @@ type StudyProgram = {
   } | null;
 };
 
-// --- FIX: Added specific type for CSV row data ---
 type CsvRow = {
     Institusi: string;
     Fakultas: string;
@@ -99,7 +98,7 @@ export default function StructurePage() {
     }
   };
 
-  // --- UPDATED: CSV Import Handler ---
+  // --- FIX: UPDATED CSV Import Handler to use FileReader ---
   const handleFileImport = () => {
     if (!csvFile) {
       alert("Please select a CSV file first.");
@@ -107,87 +106,86 @@ export default function StructurePage() {
     }
     setIsImporting(true);
 
-    Papa.parse(csvFile, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        const rows = results.data as CsvRow[];
-        let newItemsCount = 0;
+    const reader = new FileReader();
+
+    reader.onload = async (event) => {
+        const csvText = event.target?.result as string;
         
-        // --- FIX: Changed 'let' to 'const' as these variables are not reassigned ---
-        const localInstitutions = [...institutions];
-        const localFaculties = [...faculties];
-        const localStudyPrograms = [...studyPrograms];
+        Papa.parse(csvText, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results: ParseResult<CsvRow>) => {
+                const rows = results.data;
+                let newItemsCount = 0;
+                
+                const localInstitutions = [...institutions];
+                const localFaculties = [...faculties];
+                const localStudyPrograms = [...studyPrograms];
 
-        for (const row of rows) {
-          try {
-            // 1. Find or Create Institution
-            const instName = row.Institusi?.trim();
-            if (!instName) continue;
+                for (const row of rows) {
+                    try {
+                        const instName = row.Institusi?.trim();
+                        if (!instName) continue;
 
-            let institution = localInstitutions.find(i => i.name === instName);
-            if (!institution) {
-              const { data, error } = await supabase.from('institutions').insert({ name: instName }).select().single();
-              if (error) throw error;
-              institution = data;
-              localInstitutions.push(institution); // Add to our local tracker
-            }
+                        let institution = localInstitutions.find(i => i.name === instName);
+                        if (!institution) {
+                            const { data, error } = await supabase.from('institutions').insert({ name: instName }).select().single();
+                            if (error) throw error;
+                            institution = data;
+                            localInstitutions.push(institution);
+                        }
 
-            // 2. Find or Create Faculty
-            const facName = row.Fakultas?.trim();
-            if (!facName) continue;
+                        const facName = row.Fakultas?.trim();
+                        if (!facName) continue;
 
-            let faculty = localFaculties.find(f => f.name === facName && f.institution_id === institution.id);
-            if (!faculty) {
-              const { data, error } = await supabase.from('faculties').insert({ name: facName, institution_id: institution.id }).select('*, institutions(name)').single();
-              if (error) throw error;
-              faculty = data as Faculty;
-              localFaculties.push(faculty); // Add to our local tracker
-            }
+                        let faculty = localFaculties.find(f => f.name === facName && f.institution_id === institution.id);
+                        if (!faculty) {
+                            const { data, error } = await supabase.from('faculties').insert({ name: facName, institution_id: institution.id }).select('*, institutions(name)').single();
+                            if (error) throw error;
+                            faculty = data as Faculty;
+                            localFaculties.push(faculty);
+                        }
 
-            // 3. Find or Create Study Program
-            const progName = row.Prodi?.trim();
-            if (!progName) continue;
+                        const progName = row.Prodi?.trim();
+                        if (!progName) continue;
 
-            const program = localStudyPrograms.find(p => p.name === progName && p.faculty_id === faculty.id);
-            if (!program) {
-              const { data, error } = await supabase.from('study_programs').insert({ name: progName, faculty_id: faculty.id }).select().single();
-              if (error) throw error;
-              localStudyPrograms.push(data as StudyProgram); // Add to our local tracker
-              newItemsCount++;
-            }
-          // --- FIX: Replaced 'any' with a safer type check ---
-          } catch (error: unknown) {
-            let errorMessage = "An unknown error occurred.";
-            if (error instanceof Error) {
-                errorMessage = error.message;
-            } else if (typeof error === 'string') {
-                errorMessage = error;
-            }
-            alert(`An error occurred during import: ${errorMessage}`);
-            setIsImporting(false);
-            return;
-          }
-        }
-        
-        setIsImporting(false);
-        alert(`Import complete! ${newItemsCount} new item(s) were processed.`);
-        fetchData();
-      },
-      // --- FIX: Replaced 'any' with the specific 'ParseError' type from papaparse ---
-      error: (error: ParseError) => {
-        console.error("Error parsing CSV:", error);
-        alert("An error occurred while parsing the CSV file.");
-        setIsImporting(false);
-      },
-    });
+                        const program = localStudyPrograms.find(p => p.name === progName && p.faculty_id === faculty.id);
+                        if (!program) {
+                            const { data, error } = await supabase.from('study_programs').insert({ name: progName, faculty_id: faculty.id }).select().single();
+                            if (error) throw error;
+                            localStudyPrograms.push(data as StudyProgram);
+                            newItemsCount++;
+                        }
+                    } catch (error) {
+                        let errorMessage = "An unknown error occurred.";
+                        if (error instanceof Error) {
+                            errorMessage = error.message;
+                        }
+                        alert(`An error occurred during import: ${errorMessage}`);
+                        setIsImporting(false);
+                        return;
+                    }
+                }
+                
+                setIsImporting(false);
+                alert(`Import complete! ${newItemsCount} new item(s) were processed.`);
+                fetchData();
+            },
+            error: (error: ParseError) => {
+                console.error("Error parsing CSV:", error);
+                alert("An error occurred while parsing the CSV file.");
+                setIsImporting(false);
+            },
+        });
+    };
+
+    reader.readAsText(csvFile);
   };
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8">
       <h1 className="text-3xl font-bold">Manage University Structure</h1>
       
-      {/* Bulk Import Card */}
       <div className="bg-white shadow-md rounded-lg p-6 border-l-4 border-purple-500">
         <h2 className="text-xl font-semibold mb-4">Bulk Import from CSV</h2>
         <p className="text-sm text-gray-600 mb-4">
@@ -206,7 +204,6 @@ export default function StructurePage() {
         </div>
       </div>
       
-      {/* Institutions Card */}
       <div className="bg-white shadow-md rounded-lg p-6">
         <h2 className="text-xl font-semibold mb-4">Institutions</h2>
         <form onSubmit={(e) => { e.preventDefault(); createHandler('institutions', { name: newInstitutionName }); setNewInstitutionName(""); }} className="flex gap-2 mb-6">
@@ -236,7 +233,6 @@ export default function StructurePage() {
         </ul>
       </div>
 
-      {/* Faculties Card */}
       <div className="bg-white shadow-md rounded-lg p-6">
         <h2 className="text-xl font-semibold mb-4">Faculties</h2>
         <form onSubmit={(e) => { e.preventDefault(); createHandler('faculties', { name: newFacultyName, institution_id: newFacultyInstitution }); setNewFacultyName(""); setNewFacultyInstitution(""); }} className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-6">
@@ -270,7 +266,6 @@ export default function StructurePage() {
         </ul>
       </div>
 
-      {/* Study Programs Card */}
       <div className="bg-white shadow-md rounded-lg p-6">
         <h2 className="text-xl font-semibold mb-4">Study Programs</h2>
         <form onSubmit={(e) => { e.preventDefault(); createHandler('study_programs', { name: newProgramName, faculty_id: newProgramFaculty }); setNewProgramName(""); setNewProgramFaculty(""); }} className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-6">

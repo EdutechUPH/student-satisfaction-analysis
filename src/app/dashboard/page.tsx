@@ -18,7 +18,6 @@ type SurveyResponse = { comment_text: string; sentiment: string; human_selected_
 type SentimentData = { name: string; value: number };
 type SentimentByCategoryData = { name: string; Positive: number; Negative: number; Neutral: number; };
 type KeywordData = { name: string; count: number };
-// --- FIX: Added specific types for Recharts click events ---
 type PieClickPayload = { name: string; };
 type BarClickPayload = { activePayload?: { payload: { name: string } }[] };
 
@@ -50,7 +49,7 @@ export default function DashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [netSentimentScore, setNetSentimentScore] = useState(0);
     const [keywordData, setKeywordData] = useState<KeywordData[]>([]);
-    const [sentimentBySubcategoryData, setSentimentBySubcategoryData] = useState<SentimentByCategoryData[]>([]);
+    const [sentimentBySubcategoryData, setSentimentBySubcategoryData] = useState<any[]>([]);
 
     // --- Fetch all data just once on initial load ---
     useEffect(() => {
@@ -146,6 +145,7 @@ export default function DashboardPage() {
             acc[pc.name] = { name: pc.name, Positive: 0, Negative: 0, Neutral: 0 };
             return acc;
         }, {} as Record<string, SentimentByCategoryData>);
+        
         filteredData.forEach(response => {
             const countedParents = new Set<string>();
             if (response.human_selected_categories?.length && response.sentiment) {
@@ -161,7 +161,10 @@ export default function DashboardPage() {
                 });
             }
         });
-        setSentimentByCategoryData(Object.values(countsByParent));
+        
+        const finalSentimentByCategoryData = Object.values(countsByParent)
+            .filter(cat => cat.Positive > 0 || cat.Negative > 0 || cat.Neutral > 0);
+        setSentimentByCategoryData(finalSentimentByCategoryData);
 
         const stopWords = new Set(["dan", "di", "ke", "dari", "saya", "ini", "itu", "yang", "untuk", "dengan", "tidak", "ada", "sudah", "bisa", "karena", "yg", "juga", "lebih", "tapi", "sangat", "lagi", "tdk", "ada"]);
         const wordCounts = filteredData.reduce((acc, { comment_text }) => {
@@ -182,6 +185,7 @@ export default function DashboardPage() {
 
     }, [allResponses, selectedFaculty, selectedProgram, selectedSentiment, selectedSuggestion, selectedParentCategory, selectedSubCategory, searchTerm, isLoading, studyPrograms, parentCategories, subCategories]);
 
+    // --- Helper variables ---
     const filteredPrograms = selectedFaculty !== 'all' ? studyPrograms.filter(p => p.faculty_id === selectedFaculty) : [];
     const filteredSubcategories = selectedParentCategory !== 'all' ? subCategories.filter(sc => sc.parent_category_id === selectedParentCategory) : [];
     const displayedSubcategoryData = (selectedParentCategory !== 'all' 
@@ -299,7 +303,8 @@ export default function DashboardPage() {
                             <ResponsiveContainer width="100%" height={400}>
                                 <BarChart data={displayedSubcategoryData} layout="vertical" margin={{ top: 5, right: 30, left: 180, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis type="number" allowDecimals={false} stackId="stack" />
+                                    {/* --- FIX: Added domain to prevent NaN error --- */}
+                                    <XAxis type="number" allowDecimals={false} stackId="stack" domain={[0, 'dataMax']} />
                                     <YAxis type="category" dataKey="name" width={180} interval={0} tick={{ fontSize: 12 }} />
                                     <Tooltip cursor={{ fill: '#f3f4f6' }} />
                                     <Legend wrapperStyle={{fontSize: "12px"}}/>
@@ -318,7 +323,8 @@ export default function DashboardPage() {
                             <ResponsiveContainer width="100%" height={400}>
                                 <BarChart data={sentimentByCategoryData} layout="vertical" margin={{ top: 5, right: 30, left: 180, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis type="number" allowDecimals={false} stackId="a" />
+                                    {/* --- FIX: Added domain to prevent NaN error --- */}
+                                    <XAxis type="number" allowDecimals={false} stackId="a" domain={[0, 'dataMax']} />
                                     <YAxis type="category" dataKey="name" width={180} interval={0} tick={{ fontSize: 12 }} />
                                     <Tooltip />
                                     <Legend wrapperStyle={{fontSize: "12px"}}/>
@@ -341,7 +347,6 @@ export default function DashboardPage() {
                     {isLoading ? <p>Loading comments...</p> : filteredComments.length > 0 ? (
                         filteredComments.map((comment, index) => (
                             <div key={index} className="border-b pb-4 last:border-b-0">
-                                {/* FIX: Using HTML entity for quotes to prevent linting errors */}
                                 <p className="text-gray-800 italic">&quot;{comment.comment_text}&quot;</p>
                                 <div className="flex items-center gap-4 mt-2">
                                     <span className={`text-xs font-semibold px-2 py-1 rounded-full ${ comment.sentiment === 'Positive' ? 'bg-green-100 text-green-800' : comment.sentiment === 'Negative' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800' }`}>{comment.sentiment}</span>
