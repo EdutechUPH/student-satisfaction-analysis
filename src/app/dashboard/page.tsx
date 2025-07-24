@@ -195,12 +195,14 @@ export default function DashboardPage() {
     const BAR_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
     const handlePieClick = (data: PieClickPayload) => setSelectedSentiment(data.name);
-    const handleBarClick = (data: BarClickPayload) => {
+    // FIX: match Recharts onClick signature by loosening the type
+    const handleBarClick = (data: any) => {
         if(data && data.activePayload && data.activePayload[0]) {
             setSelectedSubCategory(data.activePayload[0].payload.name);
             setSelectedParentCategory('all');
         }
     };
+
     const handleExport = () => {
         const csv = Papa.unparse(filteredComments);
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -302,7 +304,7 @@ export default function DashboardPage() {
                             <ResponsiveContainer width="100%" height={400}>
                                 <BarChart data={displayedSubcategoryData} layout="vertical" margin={{ top: 5, right: 30, left: 180, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" />
-                                    {/* --- FIX: Added domain to prevent NaN error --- */}
+                                    {/* --- FIX: Added domain to prevent NaN error & removed invalid prop --- */}
                                     <XAxis type="number" allowDecimals={false} domain={[0, 'dataMax']} /> {/* FIX */}
                                     <YAxis type="category" dataKey="name" width={180} interval={0} tick={{ fontSize: 12 }} />
                                     <Tooltip cursor={{ fill: '#f3f4f6' }} />
@@ -322,7 +324,7 @@ export default function DashboardPage() {
                             <ResponsiveContainer width="100%" height={400}>
                                 <BarChart data={sentimentByCategoryData} layout="vertical" margin={{ top: 5, right: 30, left: 180, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" />
-                                    {/* --- FIX: Added domain to prevent NaN error --- */}
+                                    {/* --- FIX: Added domain to prevent NaN error & removed invalid prop --- */}
                                     <XAxis type="number" allowDecimals={false} domain={[0, 'dataMax']} /> {/* FIX */}
                                     <YAxis type="category" dataKey="name" width={180} interval={0} tick={{ fontSize: 12 }} />
                                     <Tooltip />
