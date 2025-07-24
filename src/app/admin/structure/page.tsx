@@ -2,7 +2,8 @@
 
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
-import Papa, { ParseError, ParseResult } from 'papaparse'; // Import ParseResult
+// --- FIX: Changed the import style for papaparse ---
+import * as Papa from 'papaparse';
 
 // --- Type Definitions ---
 type Institution = {
@@ -98,7 +99,7 @@ export default function StructurePage() {
     }
   };
 
-  // --- FIX: UPDATED CSV Import Handler to use FileReader ---
+  // --- UPDATED: CSV Import Handler ---
   const handleFileImport = () => {
     if (!csvFile) {
       alert("Please select a CSV file first.");
@@ -114,7 +115,8 @@ export default function StructurePage() {
         Papa.parse(csvText, {
             header: true,
             skipEmptyLines: true,
-            complete: async (results: ParseResult<CsvRow>) => {
+            // --- FIX: Updated type to use Papa.ParseResult ---
+            complete: async (results: Papa.ParseResult<CsvRow>) => {
                 const rows = results.data;
                 let newItemsCount = 0;
                 
@@ -171,7 +173,8 @@ export default function StructurePage() {
                 alert(`Import complete! ${newItemsCount} new item(s) were processed.`);
                 fetchData();
             },
-            error: (error: ParseError) => {
+            // --- FIX: Updated type to use Papa.ParseError ---
+            error: (error: Papa.ParseError) => {
                 console.error("Error parsing CSV:", error);
                 alert("An error occurred while parsing the CSV file.");
                 setIsImporting(false);
