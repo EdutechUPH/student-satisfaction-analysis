@@ -49,7 +49,7 @@ export default function DashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [netSentimentScore, setNetSentimentScore] = useState(0);
     const [keywordData, setKeywordData] = useState<KeywordData[]>([]);
-    const [sentimentBySubcategoryData, setSentimentBySubcategoryData] = useState<SentimentBySubcategoryData[]>([]);
+    const [sentimentBySubcategoryData, setSentimentBySubcategoryData] = useState<SentimentByCategoryData[]>([]);
 
     // --- Fetch all data just once on initial load ---
     useEffect(() => {
