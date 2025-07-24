@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import Papa from 'papaparse';
+import React, { useEffect, useState } from 'react'; // FIX: Imported React for event types
+import Papa, { ParseError, ParseResult } from 'papaparse'; // FIX: Imported specific types from papaparse
 import { supabase } from '@/lib/supabase';
 import { saveVerifiedData } from '@/lib/data-importer';
 
@@ -9,7 +9,29 @@ import { saveVerifiedData } from '@/lib/data-importer';
 export type ParentCategory = { id: string; name: string; description: string | null };
 export type SubCategory = { id: string; name: string; parent_category_id: string; parent_categories: { name: string } | null };
 export type StudyProgram = { id: string; name: string; faculty_id: string; faculties: { name: string; institution_id: string; institutions: { name: string; } | null; } | null; };
-export type VerifiedRow = { [key: string]: any; No: string; "Learning Experience_comment": string; sentiment: "Positive" | "Negative" | "Neutral"; ai_subcategories: string[]; human_selected_categories: string[] | null; is_verified: boolean; Prodi: string; is_suggestion: boolean; };
+
+// FIX: Made this type more specific to avoid 'any'
+export type RawCsvRow = {
+    No: string;
+    Prodi: string;
+    "Learning Experience_comment": string;
+    ai_subcategories?: string;
+    is_suggestion?: boolean | string;
+    [key: string]: string | number | boolean | undefined | null;
+};
+
+// FIX: Made this type more specific to avoid 'any'
+export type VerifiedRow = {
+    No: string;
+    Prodi: string;
+    "Learning Experience_comment": string;
+    sentiment: "Positive" | "Negative" | "Neutral";
+    ai_subcategories: string[];
+    human_selected_categories: string[] | null;
+    is_verified: boolean;
+    is_suggestion: boolean;
+    [key: string]: unknown; // Allow other properties but avoid 'any'
+};
 
 export default function DataProcessingPage() {
     // --- State ---
@@ -111,13 +133,15 @@ export default function DataProcessingPage() {
         setCheckClicked(false);
         Papa.parse(file, {
             header: true, skipEmptyLines: true, dynamicTyping: true,
-            complete: (results) => {
-                const parsedData = results.data as any[];
+            // FIX: Typed the 'results' parameter to avoid 'any'
+            complete: (results: ParseResult<RawCsvRow>) => {
+                const parsedData = results.data;
                 const structuredData = parsedData
                     .filter(row => row && typeof row === 'object' && row.No && row.Prodi)
                     .map(row => {
                         let aiSubcategories: string[] = [];
-                        try { aiSubcategories = JSON.parse(row.ai_subcategories || '[]'); } catch (e) { }
+                        // FIX: Removed unused 'e' parameter in catch block
+                        try { aiSubcategories = JSON.parse(row.ai_subcategories || '[]'); } catch { /* Ignore parsing errors */ }
                         return { 
                             ...row, 
                             ai_subcategories: aiSubcategories, 
@@ -289,18 +313,20 @@ export default function DataProcessingPage() {
             </div>
             
             {checkClicked && mismatchedPrograms.length > 0 && (
+                // FIX: Replaced literal quotes and apostrophes with HTML entities
                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg" role="alert">
                     <p className="font-bold">Mismatched Program Names Found!</p>
-                    <p>The following 'Prodi' names from your CSV do not match any entry in the database. Please correct them in your CSV or add them on the 'Manage University Structure' page:</p>
+                    <p>The following &apos;Prodi&apos; names from your CSV do not match any entry in the database. Please correct them in your CSV or add them on the &apos;Manage University Structure&apos; page:</p>
                     <ul className="list-disc list-inside mt-2">
-                        {mismatchedPrograms.map(name => <li key={name}>"{name}"</li>)}
+                        {mismatchedPrograms.map(name => <li key={name}>&quot;{name}&quot;</li>)}
                     </ul>
                 </div>
             )}
             {checkClicked && mismatchedPrograms.length === 0 && fileName && (
                  <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg" role="alert">
                     <p className="font-bold">All Program Names Match!</p>
-                    <p>It looks like all 'Prodi' names in the CSV have a match in the database. You are ready to save.</p>
+                    {/* FIX: Replaced literal quotes with HTML entities */}
+                    <p>It looks like all &apos;Prodi&apos; names in the CSV have a match in the database. You are ready to save.</p>
                 </div>
             )}
             
@@ -324,7 +350,8 @@ export default function DataProcessingPage() {
                                     return (
                                         <tr key={rowIndex}>
                                             <td className="px-4 py-4 align-top">
-                                                <p className="whitespace-pre-wrap max-w-md italic text-gray-700">"{row['Learning Experience_comment']}"</p>
+                                                {/* FIX: Replaced literal quotes with HTML entities */}
+                                                <p className="whitespace-pre-wrap max-w-md italic text-gray-700">&quot;{row['Learning Experience_comment']}&quot;</p>
                                                 <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
                                                     <span className="font-semibold">AI Reasoning:</span> {row.ai_reasoning}
                                                 </p>
