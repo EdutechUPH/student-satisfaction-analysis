@@ -21,7 +21,6 @@ type KeywordData = { name: string; count: number };
 type PieClickPayload = { name: string; };
 type BarClickPayload = { activePayload?: { payload: { name: string } }[] };
 
-
 export default function DashboardPage() {
     // --- State for filter options ---
     const [faculties, setFaculties] = useState<Faculty[]>([]);
@@ -304,7 +303,7 @@ export default function DashboardPage() {
                                 <BarChart data={displayedSubcategoryData} layout="vertical" margin={{ top: 5, right: 30, left: 180, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     {/* --- FIX: Added domain to prevent NaN error --- */}
-                                    <XAxis type="number" allowDecimals={false} stackId="stack" domain={[0, 'dataMax']} />
+                                    <XAxis type="number" allowDecimals={false} domain={[0, 'dataMax']} /> {/* FIX */}
                                     <YAxis type="category" dataKey="name" width={180} interval={0} tick={{ fontSize: 12 }} />
                                     <Tooltip cursor={{ fill: '#f3f4f6' }} />
                                     <Legend wrapperStyle={{fontSize: "12px"}}/>
@@ -324,7 +323,7 @@ export default function DashboardPage() {
                                 <BarChart data={sentimentByCategoryData} layout="vertical" margin={{ top: 5, right: 30, left: 180, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     {/* --- FIX: Added domain to prevent NaN error --- */}
-                                    <XAxis type="number" allowDecimals={false} stackId="a" domain={[0, 'dataMax']} />
+                                    <XAxis type="number" allowDecimals={false} domain={[0, 'dataMax']} /> {/* FIX */}
                                     <YAxis type="category" dataKey="name" width={180} interval={0} tick={{ fontSize: 12 }} />
                                     <Tooltip />
                                     <Legend wrapperStyle={{fontSize: "12px"}}/>
