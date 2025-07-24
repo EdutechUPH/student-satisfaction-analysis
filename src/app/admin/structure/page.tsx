@@ -118,45 +118,45 @@ export default function StructurePage() {
 
             for (const row of rows) {
                 try {
+                    // --- 1. Find or Create Institution ---
                     const instName = row.Institusi?.trim();
                     if (!instName) continue;
 
                     let institution = localInstitutions.find(i => i.name === instName);
                     if (!institution) {
-                        const { data, error } = await supabase.from('institutions').insert({ name: instName }).select().single();
+                        const { data: newInstitution, error } = await supabase.from('institutions').insert({ name: instName }).select().single();
                         if (error) throw error;
-                        // --- FIX: Ensure data is not null before proceeding ---
-                        if (!data) throw new Error(`Failed to create or retrieve institution: ${instName}`);
+                        if (!newInstitution) throw new Error(`Failed to create or retrieve institution: ${instName}`);
                         
-                        institution = data;
-                        localInstitutions.push(institution);
+                        localInstitutions.push(newInstitution);
+                        institution = newInstitution; // Assign the confirmed new institution
                     }
 
+                    // --- 2. Find or Create Faculty ---
                     const facName = row.Fakultas?.trim();
                     if (!facName) continue;
 
                     let faculty = localFaculties.find(f => f.name === facName && f.institution_id === institution.id);
                     if (!faculty) {
-                        const { data, error } = await supabase.from('faculties').insert({ name: facName, institution_id: institution.id }).select('*, institutions(name)').single();
+                        const { data: newFaculty, error } = await supabase.from('faculties').insert({ name: facName, institution_id: institution.id }).select('*, institutions(name)').single();
                         if (error) throw error;
-                        // --- FIX: Ensure data is not null before proceeding ---
-                        if (!data) throw new Error(`Failed to create or retrieve faculty: ${facName}`);
+                        if (!newFaculty) throw new Error(`Failed to create or retrieve faculty: ${facName}`);
                         
-                        faculty = data as Faculty;
-                        localFaculties.push(faculty);
+                        localFaculties.push(newFaculty as Faculty);
+                        faculty = newFaculty as Faculty; // Assign the confirmed new faculty
                     }
 
+                    // --- 3. Find or Create Study Program ---
                     const progName = row.Prodi?.trim();
                     if (!progName) continue;
 
                     const program = localStudyPrograms.find(p => p.name === progName && p.faculty_id === faculty.id);
                     if (!program) {
-                        const { data, error } = await supabase.from('study_programs').insert({ name: progName, faculty_id: faculty.id }).select().single();
+                        const { data: newProgram, error } = await supabase.from('study_programs').insert({ name: progName, faculty_id: faculty.id }).select().single();
                         if (error) throw error;
-                        // --- FIX: Ensure data is not null before proceeding ---
-                        if (!data) throw new Error(`Failed to create or retrieve program: ${progName}`);
+                        if (!newProgram) throw new Error(`Failed to create or retrieve program: ${progName}`);
 
-                        localStudyPrograms.push(data as StudyProgram);
+                        localStudyPrograms.push(newProgram as StudyProgram);
                         newItemsCount++;
                     }
                 } catch (error) {
