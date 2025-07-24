@@ -55,23 +55,39 @@ export default function ReviewPage() {
             const to = from + ITEMS_PER_PAGE - 1;
 
             let query = supabase.from('survey_responses')
-                .select(`id, original_survey_row_id, comment_text, sentiment, human_selected_categories, ai_reasoning, is_suggestion, study_programs (name, faculties (name))`, { count: 'exact' });
+                .select(`id, original_survey_row_id, comment_text, sentiment, human_selected_categories, ai_reasoning, is_suggestion, study_program_id, study_programs (name, faculties (name))`, { count: 'exact' });
             
             if (selectedSentiment !== 'all') { query = query.eq('sentiment', selectedSentiment); }
+            
+            // --- FIX: Correctly filter jsonb array for parent category ---
             if (selectedCategory !== 'all') {
                 const subCategoryNames = subCategories
                     .filter(sc => sc.parent_category_id === selectedCategory)
                     .map(sc => sc.name);
                 if (subCategoryNames.length > 0) {
-                    query = query.overlaps('human_selected_categories', subCategoryNames);
+                    const orFilter = subCategoryNames.map(name => `human_selected_categories.cs.["${name}"]`).join(',');
+                    query = query.or(orFilter);
+                } else {
+                    // If a parent category is selected but has no subcategories, return no results.
+                    setResponses([]);
+                    setTotalCount(0);
+                    setIsLoading(false);
+                    return;
                 }
             }
+
             if (selectedProgram !== 'all') {
                 query = query.eq('study_program_id', selectedProgram);
             } else if (selectedFaculty !== 'all') {
                 const programIds = allStudyPrograms.filter(p => p.faculty_id === selectedFaculty).map(p => p.id);
-                if (programIds.length > 0) { query = query.in('study_program_id', programIds); } 
-                else { setResponses([]); setTotalCount(0); setIsLoading(false); return; }
+                if (programIds.length > 0) { 
+                    query = query.in('study_program_id', programIds); 
+                } else { 
+                    setResponses([]); 
+                    setTotalCount(0); 
+                    setIsLoading(false); 
+                    return; 
+                }
             }
             
             query = query.order('original_survey_row_id', { ascending: true }).range(from, to);
@@ -80,7 +96,7 @@ export default function ReviewPage() {
             if (error) {
                 console.error("Error fetching responses:", error);
             } else {
-                setResponses(data || []);
+                setResponses((data as SurveyResponse[]) || []);
                 setTotalCount(count || 0);
             }
             setIsLoading(false);
@@ -99,10 +115,14 @@ export default function ReviewPage() {
             if (progRes.data) setAllStudyPrograms(progRes.data);
         };
         
+        // Fetch options first, then fetch data
         if (allFaculties.length === 0) {
-            fetchFilterOptions().then(() => fetchData());
-        } else {
-            fetchData();
+            fetchFilterOptions();
+        }
+        
+        // Only fetch data once filter options are loaded
+        if (allFaculties.length > 0) {
+             fetchData();
         }
     }, [currentPage, selectedFaculty, selectedProgram, selectedSentiment, selectedCategory, allFaculties, allStudyPrograms, subCategories]);
 
@@ -198,7 +218,8 @@ export default function ReviewPage() {
                                 <tr key={response.id}>
                                     <td className="px-4 py-4 font-mono text-center align-top">{response.original_survey_row_id}</td>
                                     <td className="px-4 py-4 max-w-lg">
-                                        <p className="whitespace-pre-wrap italic text-gray-700">"{response.comment_text}"</p>
+                                        {/* FIX: Replaced literal quotes with HTML entity to fix linting error */}
+                                        <p className="whitespace-pre-wrap italic text-gray-700">&quot;{response.comment_text}&quot;</p>
                                         <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
                                             <span className="font-semibold">AI Reasoning:</span> {response.ai_reasoning}
                                         </p>

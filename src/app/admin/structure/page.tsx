@@ -2,7 +2,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
-import Papa from 'papaparse';
+import Papa, { ParseError } from 'papaparse'; // FIX: Import ParseError type
 
 // --- Type Definitions ---
 type Institution = {
@@ -26,6 +26,13 @@ type StudyProgram = {
     institution_id: string;
     institutions: { name: string; } | null;
   } | null;
+};
+
+// --- FIX: Added specific type for CSV row data ---
+type CsvRow = {
+    Institusi: string;
+    Fakultas: string;
+    Prodi: string;
 };
 
 export default function StructurePage() {
@@ -104,13 +111,13 @@ export default function StructurePage() {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
-        const rows = results.data as { Institusi: string; Fakultas: string; Prodi: string; }[];
+        const rows = results.data as CsvRow[];
         let newItemsCount = 0;
         
-        // Create local copies to track items created during THIS import
-        let localInstitutions = [...institutions];
-        let localFaculties = [...faculties];
-        let localStudyPrograms = [...studyPrograms];
+        // --- FIX: Changed 'let' to 'const' as these variables are not reassigned ---
+        const localInstitutions = [...institutions];
+        const localFaculties = [...faculties];
+        const localStudyPrograms = [...studyPrograms];
 
         for (const row of rows) {
           try {
@@ -142,16 +149,22 @@ export default function StructurePage() {
             const progName = row.Prodi?.trim();
             if (!progName) continue;
 
-            let program = localStudyPrograms.find(p => p.name === progName && p.faculty_id === faculty.id);
+            const program = localStudyPrograms.find(p => p.name === progName && p.faculty_id === faculty.id);
             if (!program) {
               const { data, error } = await supabase.from('study_programs').insert({ name: progName, faculty_id: faculty.id }).select().single();
               if (error) throw error;
-              program = data;
-              localStudyPrograms.push(program as StudyProgram); // Add to our local tracker
+              localStudyPrograms.push(data as StudyProgram); // Add to our local tracker
               newItemsCount++;
             }
-          } catch (error: any) {
-            alert(`An error occurred during import: ${error.message}`);
+          // --- FIX: Replaced 'any' with a safer type check ---
+          } catch (error: unknown) {
+            let errorMessage = "An unknown error occurred.";
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+            alert(`An error occurred during import: ${errorMessage}`);
             setIsImporting(false);
             return;
           }
@@ -161,7 +174,8 @@ export default function StructurePage() {
         alert(`Import complete! ${newItemsCount} new item(s) were processed.`);
         fetchData();
       },
-      error: (error: any) => {
+      // --- FIX: Replaced 'any' with the specific 'ParseError' type from papaparse ---
+      error: (error: ParseError) => {
         console.error("Error parsing CSV:", error);
         alert("An error occurred while parsing the CSV file.");
         setIsImporting(false);

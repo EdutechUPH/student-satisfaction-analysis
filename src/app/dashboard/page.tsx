@@ -22,6 +22,7 @@ type KeywordData = { name: string; count: number };
 type PieClickPayload = { name: string; };
 type BarClickPayload = { activePayload?: { payload: { name: string } }[] };
 
+
 export default function DashboardPage() {
     // --- State for filter options ---
     const [faculties, setFaculties] = useState<Faculty[]>([]);
@@ -128,7 +129,6 @@ export default function DashboardPage() {
                     if (!acc[cat]) {
                         acc[cat] = { name: cat, Positive: 0, Negative: 0, Neutral: 0, total: 0 };
                     }
-                    // FIX: Ensure sentiment is a valid key
                     const validSentiment = sentiment as 'Positive' | 'Negative' | 'Neutral';
                     acc[cat][validSentiment]++;
                     acc[cat].total++;
@@ -136,6 +136,7 @@ export default function DashboardPage() {
             }
             return acc;
         }, {} as Record<string, { name: string; Positive: number; Negative: number; Neutral: number; total: number; }>);
+
         const sortedSentimentBySubcategory = Object.values(subCatSentiments).sort((a, b) => b.total - a.total);
         setSentimentBySubcategoryData(sortedSentimentBySubcategory);
 
@@ -190,7 +191,6 @@ export default function DashboardPage() {
     const PIE_COLORS = { 'Positive': '#10B981', 'Negative': '#EF4444', 'Neutral': '#6B7280' };
     const BAR_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-    // --- FIX: Added specific types to event handlers ---
     const handlePieClick = (data: PieClickPayload) => setSelectedSentiment(data.name);
     const handleBarClick = (data: BarClickPayload) => {
         if(data && data.activePayload && data.activePayload[0]) {
@@ -341,8 +341,8 @@ export default function DashboardPage() {
                     {isLoading ? <p>Loading comments...</p> : filteredComments.length > 0 ? (
                         filteredComments.map((comment, index) => (
                             <div key={index} className="border-b pb-4 last:border-b-0">
-                                {/* FIX: Replaced " with a template literal for safety */}
-                                <p className="text-gray-800 italic">{`"${comment.comment_text}"`}</p>
+                                {/* FIX: Using HTML entity for quotes to prevent linting errors */}
+                                <p className="text-gray-800 italic">&quot;{comment.comment_text}&quot;</p>
                                 <div className="flex items-center gap-4 mt-2">
                                     <span className={`text-xs font-semibold px-2 py-1 rounded-full ${ comment.sentiment === 'Positive' ? 'bg-green-100 text-green-800' : comment.sentiment === 'Negative' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800' }`}>{comment.sentiment}</span>
                                     {comment.is_suggestion && ( <span className="text-xs font-semibold bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">Suggestion</span> )}
@@ -352,7 +352,7 @@ export default function DashboardPage() {
                                 </div>
                             </div>
                         ))
-                    ) : <p className="text-gray-500">No comments match the current filters.</p>}
+                    ) : <p className="text-center text-gray-500">No comments match the current filters.</p>}
                     </div>
                 </CardContent>
             </Card>
