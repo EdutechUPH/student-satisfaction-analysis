@@ -310,6 +310,47 @@ export default function DataProcessingPage() {
                         </button>
                     </div>
                 </div>
+
+                {/* === AI suggestion card – paste this INSIDE the existing grid === */}
+                <div className="bg-white shadow-md rounded-lg p-6 border-l-4 border-purple-500">
+                  <h2 className="text-xl font-semibold mb-4">AI Category Ideas</h2>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Let the AI scan the uploaded comments and propose new Category / Subcategory names.
+                  </p>
+
+                  <button
+                    className="btn-primary w-full bg-purple-600 hover:bg-purple-800 disabled:bg-gray-300"
+                    disabled={verifiedData.length === 0}
+                    onClick={async () => {
+                      // take up to first 50 comments so the prompt is not too long
+                      const comments = verifiedData
+                        .slice(0, 50)
+                        .map(r => r["Learning Experience_comment"])
+                        .filter(Boolean);
+
+                      if (comments.length === 0) {
+                        alert("Upload a CSV first, then click again.");
+                        return;
+                      }
+
+                      try {
+                        const res = await fetch("/api/suggest-categories", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ comments })
+                        });
+                        const json = await res.json();
+                        alert(json.text ?? "No reply from AI");
+                      } catch (err) {
+                        console.error(err);
+                        alert("Failed to contact AI service.");
+                      }
+                    }}
+                  >
+                    Ask AI for Category Ideas
+                  </button>
+                </div>
+                {/* === end AI suggestion card === */}
             </div>
             
             {checkClicked && mismatchedPrograms.length > 0 && (
@@ -358,29 +399,29 @@ export default function DataProcessingPage() {
                                             </td>
                                             <td className="px-4 py-4 align-top">
                                                  <div className="flex flex-col gap-1">
-                                                    {(["Positive", "Negative", "Neutral"] as const).map(senti => (
-                                                        <button key={senti} onClick={() => handleSentimentChange(rowIndex, senti)}
-                                                            className={`px-2 py-1 rounded text-xs font-semibold w-24 text-center border-2 ${
-                                                                row.sentiment === senti 
-                                                                    ? (senti === 'Positive' ? 'bg-green-500 text-white border-green-500' 
-                                                                    : senti === 'Negative' ? 'bg-red-500 text-white border-red-500' 
-                                                                    : 'bg-gray-500 text-white border-gray-500')
-                                                                    : 'bg-transparent hover:bg-gray-100'
-                                                            }`}
-                                                        >{senti}</button>
-                                                    ))}
-                                                </div>
-                                                <div className="mt-4 pt-4 border-t">
-                                                    <label className="flex items-center gap-2 cursor-pointer">
-                                                        <input 
-                                                            type="checkbox" 
-                                                            checked={row.is_suggestion}
-                                                            onChange={() => handleSuggestionToggle(rowIndex)}
-                                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                        />
-                                                        <span className="font-semibold">Is a Suggestion</span>
-                                                    </label>
-                                                </div>
+                                                     {(["Positive", "Negative", "Neutral"] as const).map(senti => (
+                                                         <button key={senti} onClick={() => handleSentimentChange(rowIndex, senti)}
+                                                                 className={`px-2 py-1 rounded text-xs font-semibold w-24 text-center border-2 ${
+                                                                     row.sentiment === senti 
+                                                                         ? (senti === 'Positive' ? 'bg-green-500 text-white border-green-500' 
+                                                                         : senti === 'Negative' ? 'bg-red-500 text-white border-red-500' 
+                                                                         : 'bg-gray-500 text-white border-gray-500')
+                                                                         : 'bg-transparent hover:bg-gray-100'
+                                                                 }`}
+                                                         >{senti}</button>
+                                                     ))}
+                                                 </div>
+                                                 <div className="mt-4 pt-4 border-t">
+                                                     <label className="flex items-center gap-2 cursor-pointer">
+                                                         <input 
+                                                             type="checkbox" 
+                                                             checked={row.is_suggestion}
+                                                             onChange={() => handleSuggestionToggle(rowIndex)}
+                                                             className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                         />
+                                                         <span className="font-semibold">Is a Suggestion</span>
+                                                     </label>
+                                                 </div>
                                             </td>
                                             <td className="px-4 py-4 max-w-lg align-top">
                                                 {parentCategories.map(pCat => (
@@ -394,7 +435,7 @@ export default function DataProcessingPage() {
                                                                     : 'bg-gray-200 text-gray-800';
                                                                 return (
                                                                     <button key={sCat.id} onClick={() => handleSubcategoryToggle(rowIndex, sCat.name)}
-                                                                        className={`px-2 py-1 rounded-full font-semibold text-xs ${bgColor}`}
+                                                                            className={`px-2 py-1 rounded-full font-semibold text-xs ${bgColor}`}
                                                                     >
                                                                         {sCat.name}
                                                                     </button>
