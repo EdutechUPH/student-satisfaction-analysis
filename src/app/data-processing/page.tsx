@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from 'react'; // FIX: Imported React for event types
-import Papa, { ParseError, ParseResult } from 'papaparse'; // FIX: Imported specific types from papaparse
+import React, { useEffect, useState } from 'react';
+import Papa, { ParseResult } from 'papaparse';
 import { supabase } from '@/lib/supabase';
 import { saveVerifiedData } from '@/lib/data-importer';
 
@@ -10,7 +10,6 @@ export type ParentCategory = { id: string; name: string; description: string | n
 export type SubCategory = { id: string; name: string; parent_category_id: string; parent_categories: { name: string } | null };
 export type StudyProgram = { id: string; name: string; faculty_id: string; faculties: { name: string; institution_id: string; institutions: { name: string; } | null; } | null; };
 
-// 1️⃣ UPDATED TYPE DEFINITION
 export type RawCsvRow = {
     No: string;
     Institusi: string;
@@ -24,7 +23,6 @@ export type RawCsvRow = {
     [key: string]: string | number | boolean | undefined | null;
 };
 
-// FIX: Made this type more specific to avoid 'any'
 export type VerifiedRow = {
     No: string;
     Prodi: string;
@@ -61,7 +59,10 @@ export default function DataProcessingPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [mismatchedPrograms, setMismatchedPrograms] = useState<string[]>([]);
     const [checkClicked, setCheckClicked] = useState(false);
-
+    const [pendingSuggestions, setPendingSuggestions] = useState<
+        { id: string; parent_name: string; child_name: string }[]
+    >([]);
+    
     // --- DATA FETCHING ---
     const fetchData = async () => {
         const [pCatRes, sCatRes, progRes] = await Promise.all([
@@ -73,6 +74,14 @@ export default function DataProcessingPage() {
         if (pCatRes.data) setParentCategories(pCatRes.data);
         if (sCatRes.data) setSubCategories(sCatRes.data as SubCategory[]);
         if (progRes.data) setAllStudyPrograms(progRes.data as StudyProgram[]);
+
+        const suggRes = await supabase
+            .from('category_suggestions')
+            .select('id, parent_name, child_name')
+            .eq('status', 'pending')
+            .order('created_at');
+
+        if (suggRes.data) setPendingSuggestions(suggRes.data);
     };
 
     useEffect(() => { fetchData(); }, []);
@@ -136,11 +145,10 @@ export default function DataProcessingPage() {
         setMismatchedPrograms([]);
         setCheckClicked(false);
         
-        // 2️⃣ UPDATED PARSING LOGIC
         Papa.parse(file, {
             header: true,
-            skipEmptyLines: "greedy",     // handles blank lines
-            delimiter: "",                // auto-detects comma or tab
+            skipEmptyLines: "greedy",
+            delimiter: "",
             dynamicTyping: true,
             complete: (results: ParseResult<RawCsvRow>) => {
                 const parsedData = results.data;
@@ -148,7 +156,6 @@ export default function DataProcessingPage() {
                 const structuredData = parsedData
                     .filter(r => r && typeof r === "object" && r.No)
                     .map(row => {
-                        // pick whichever column exists
                         const prodiName = row.Prodi ?? row["Program Studi"] ?? "";
                         let aiSub: string[] = [];
                         try { aiSub = JSON.parse(row.ai_subcategories || "[]"); } catch {/* ignore */}
@@ -353,7 +360,8 @@ export default function DataProcessingPage() {
                           body: JSON.stringify({ comments })
                         });
                         const json = await res.json();
-                        alert(json.text ?? "No reply from AI");
+                        alert("Suggestions sent for review!");
+                        fetchData(); // Refresh suggestions
                       } catch (err) {
                         console.error(err);
                         alert("Failed to contact AI service.");
@@ -364,6 +372,47 @@ export default function DataProcessingPage() {
                   </button>
                 </div>
             </div>
+            
+            {/* ---- Review AI suggestions card ---- */}
+            {pendingSuggestions.length > 0 && (
+                <div className="bg-white shadow-md rounded-lg p-6 border-l-4 border-purple-500">
+                    <h2 className="text-xl font-semibold mb-4">Review AI Category Suggestions</h2>
+                    <ul className="space-y-2">
+                        {pendingSuggestions.map(s => (
+                            <li key={s.id} className="flex justify-between items-center">
+                                <span><strong>{s.parent_name}</strong> ➜ {s.child_name}</span>
+                                <div className="flex gap-2">
+                                    <button
+                                        className="btn-primary bg-green-600 hover:bg-green-800"
+                                        onClick={async () => {
+                                            await supabase
+                                                .from('category_suggestions')
+                                                .update({ status: 'approved' })
+                                                .match({ id: s.id });
+                                            fetchData();       // refresh list
+                                        }}
+                                    >
+                                        Approve
+                                    </button>
+                                    <button
+                                        className="btn-danger"
+                                        onClick={async () => {
+                                            await supabase
+                                                .from('category_suggestions')
+                                                .update({ status: 'rejected' })
+                                                .match({ id: s.id });
+                                            fetchData();
+                                        }}
+                                    >
+                                        Reject
+                                    </button>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+            {/* ---- End review card ---- */}
             
             {checkClicked && mismatchedPrograms.length > 0 && (
                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg" role="alert">
