@@ -10,10 +10,14 @@ export type ParentCategory = { id: string; name: string; description: string | n
 export type SubCategory = { id: string; name: string; parent_category_id: string; parent_categories: { name: string } | null };
 export type StudyProgram = { id: string; name: string; faculty_id: string; faculties: { name: string; institution_id: string; institutions: { name: string; } | null; } | null; };
 
-// FIX: Made this type more specific to avoid 'any'
+// 1️⃣ UPDATED TYPE DEFINITION
 export type RawCsvRow = {
     No: string;
-    Prodi: string;
+    Institusi: string;
+    Fakultas: string;
+    /** cleaned file uses “Prodi”, original uses “Program Studi” */
+    Prodi?: string;
+    "Program Studi"?: string;
     "Learning Experience_comment": string;
     ai_subcategories?: string;
     is_suggestion?: boolean | string;
@@ -131,27 +135,39 @@ export default function DataProcessingPage() {
         setVerifiedData([]);
         setMismatchedPrograms([]);
         setCheckClicked(false);
+        
+        // 2️⃣ UPDATED PARSING LOGIC
         Papa.parse(file, {
-            header: true, skipEmptyLines: true, dynamicTyping: true,
-            // FIX: Typed the 'results' parameter to avoid 'any'
+            header: true,
+            skipEmptyLines: "greedy",     // handles blank lines
+            delimiter: "",                // auto-detects comma or tab
+            dynamicTyping: true,
             complete: (results: ParseResult<RawCsvRow>) => {
                 const parsedData = results.data;
+
                 const structuredData = parsedData
-                    .filter(row => row && typeof row === 'object' && row.No && row.Prodi)
+                    .filter(r => r && typeof r === "object" && r.No)
                     .map(row => {
-                        let aiSubcategories: string[] = [];
-                        // FIX: Removed unused 'e' parameter in catch block
-                        try { aiSubcategories = JSON.parse(row.ai_subcategories || '[]'); } catch { /* Ignore parsing errors */ }
-                        return { 
-                            ...row, 
-                            ai_subcategories: aiSubcategories, 
-                            human_selected_categories: null, 
+                        // pick whichever column exists
+                        const prodiName = row.Prodi ?? row["Program Studi"] ?? "";
+                        let aiSub: string[] = [];
+                        try { aiSub = JSON.parse(row.ai_subcategories || "[]"); } catch {/* ignore */}
+                        return {
+                            ...row,
+                            Prodi: prodiName,
+                            ai_subcategories: aiSub,
+                            human_selected_categories: null,
                             is_verified: false,
-                            is_suggestion: row.is_suggestion === true || String(row.is_suggestion).toLowerCase() === 'true'
+                            is_suggestion:
+                                row.is_suggestion === true ||
+                                String(row.is_suggestion).toLowerCase() === "true",
                         };
                     });
-                if (results.errors.length > 0) {
-                    alert(`Warning: The CSV file has ${results.errors.length} parsing errors. This might be due to formatting issues like extra columns in some rows. Please check the file if data seems missing.`);
+
+                if (results.errors.length) {
+                    alert(
+                        `Warning: ${results.errors.length} rows had parsing issues. Check your file if data seems missing.`
+                    );
                 }
                 setVerifiedData(structuredData as VerifiedRow[]);
             },
@@ -300,7 +316,7 @@ export default function DataProcessingPage() {
                     <div className="flex items-center gap-4">
                         <label className="btn-primary bg-green-600 hover:bg-green-800 cursor-pointer">
                             <span>Choose File</span>
-                            <input type="file" accept=".csv" onChange={handleFileChange} className="hidden"/>
+                            <input type="file" accept=".csv,.tsv,.txt" onChange={handleFileChange} className="hidden"/>
                         </label>
                         {fileName && <span className="text-gray-700">{fileName}</span>}
                     </div>
@@ -311,18 +327,15 @@ export default function DataProcessingPage() {
                     </div>
                 </div>
 
-                {/* === AI suggestion card – paste this INSIDE the existing grid === */}
                 <div className="bg-white shadow-md rounded-lg p-6 border-l-4 border-purple-500">
                   <h2 className="text-xl font-semibold mb-4">AI Category Ideas</h2>
                   <p className="text-sm text-gray-600 mb-4">
                     Let the AI scan the uploaded comments and propose new Category / Subcategory names.
                   </p>
-
                   <button
                     className="btn-primary w-full bg-purple-600 hover:bg-purple-800 disabled:bg-gray-300"
                     disabled={verifiedData.length === 0}
                     onClick={async () => {
-                      // take up to first 50 comments so the prompt is not too long
                       const comments = verifiedData
                         .slice(0, 50)
                         .map(r => r["Learning Experience_comment"])
@@ -350,14 +363,12 @@ export default function DataProcessingPage() {
                     Ask AI for Category Ideas
                   </button>
                 </div>
-                {/* === end AI suggestion card === */}
             </div>
             
             {checkClicked && mismatchedPrograms.length > 0 && (
-                // FIX: Replaced literal quotes and apostrophes with HTML entities
                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg" role="alert">
                     <p className="font-bold">Mismatched Program Names Found!</p>
-                    <p>The following &apos;Prodi&apos; names from your CSV do not match any entry in the database. Please correct them in your CSV or add them on the &apos;Manage University Structure&apos; page:</p>
+                    <p>The following &apos;Prodi&apos; names from your file do not match any entry in the database. Please correct them in your file or add them on the &apos;Manage University Structure&apos; page:</p>
                     <ul className="list-disc list-inside mt-2">
                         {mismatchedPrograms.map(name => <li key={name}>&quot;{name}&quot;</li>)}
                     </ul>
@@ -366,8 +377,7 @@ export default function DataProcessingPage() {
             {checkClicked && mismatchedPrograms.length === 0 && fileName && (
                  <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg" role="alert">
                     <p className="font-bold">All Program Names Match!</p>
-                    {/* FIX: Replaced literal quotes with HTML entities */}
-                    <p>It looks like all &apos;Prodi&apos; names in the CSV have a match in the database. You are ready to save.</p>
+                    <p>It looks like all &apos;Prodi&apos; names in the file have a match in the database. You are ready to save.</p>
                 </div>
             )}
             
@@ -391,10 +401,9 @@ export default function DataProcessingPage() {
                                     return (
                                         <tr key={rowIndex}>
                                             <td className="px-4 py-4 align-top">
-                                                {/* FIX: Replaced literal quotes with HTML entities */}
                                                 <p className="whitespace-pre-wrap max-w-md italic text-gray-700">&quot;{row['Learning Experience_comment']}&quot;</p>
                                                 <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
-                                                    <span className="font-semibold">AI Reasoning:</span> {String(row.ai_reasoning ?? '')} {/* FIX */}
+                                                    <span className="font-semibold">AI Reasoning:</span> {String(row.ai_reasoning ?? '')}
                                                 </p>
                                             </td>
                                             <td className="px-4 py-4 align-top">
